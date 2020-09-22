@@ -1,0 +1,85 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(R.utils)
+library(tidyverse)
+library(readr)
+library(tidyr)
+library(readxl)
+library(leaps)
+```
+
+```{r}
+cust_demo <- read_excel('/Users/ApoorvaSonavani/Desktop/UC/Spring 2020/Graduate Case Studies/Data/CUSTOMER_DETAILS_UPDATED.xlsx')
+
+names(cust_demo) <- gsub("'","",names(cust_demo))
+```
+
+
+```{r}
+colnames(cust_demo)
+summary(cust_demo)
+nrow(cust_demo)    ##No. of records 223,174
+length(unique(cust_demo$CUSTOMER_ID))   ##No. of records 223,174
+
+##The file is at Customer Id level, no duplicates found
+```
+
+Dropping following columns:
+Customer_First_Name
+Customer_Last_Name
+Address_Line_1
+Payment_Freq_code
+
+```{r}
+cust_demo_data <- cust_demo %>% select(-c(2:3,5))
+colnames(cust_demo_data)
+```
+
+Removing the original dataset from workspace
+```{r}
+rm(cust_demo)
+```
+
+
+```{r}
+View(head(cust_demo_data))
+unique(cust_demo_data$PAYMENT_FREQUENCY_CODE)
+
+cust_demo_data_final <- cust_demo_data %>% 
+mutate(annual_gross = case_when(PAYMENT_FREQUENCY_CODE == "BM" ~ GROSS_INCOME_AMT * 6,
+PAYMENT_FREQUENCY_CODE == "MO" ~ GROSS_INCOME_AMT * 12,
+PAYMENT_FREQUENCY_CODE == "BW" ~ GROSS_INCOME_AMT * 26,
+PAYMENT_FREQUENCY_CODE == "WK" ~ GROSS_INCOME_AMT * 52))
+
+cust_demo_data_final <- cust_demo_data_final %>% 
+mutate(annual_net = case_when(PAYMENT_FREQUENCY_CODE == "BM" ~ NET_INCOME_AMT * 6,
+PAYMENT_FREQUENCY_CODE == "MO" ~ NET_INCOME_AMT * 12,
+PAYMENT_FREQUENCY_CODE == "BW" ~ NET_INCOME_AMT * 26,
+PAYMENT_FREQUENCY_CODE == "WK" ~ NET_INCOME_AMT * 52))
+
+cust_demo_data_final <- cust_demo_data_final %>% 
+                            group_by(CUSTOMER_ID) %>%
+                                mutate(max_annual_income = pmax(annual_gross, annual_net, na.rm = T)) %>% ungroup()
+
+
+View(head(cust_demo_data_final,200))
+length(unique(cust_demo_data_final$CUSTOMER_ID))
+
+```
+
+Dropping Payment_freq_code column and the derived columns annual_gross and annual_net
+
+
+```{r}
+cust_demo_data_final <- cust_demo_data_final %>% select(-c("PAYMENT_FREQUENCY_CODE", "annual_gross", "annual_net"))
+colnames(cust_demo_data_final)
+length(unique(cust_demo_data_final$CUSTOMER_ID))
+```
+
+
+Cust_Demo_data_final is our final dataset to be used for analysis
+
