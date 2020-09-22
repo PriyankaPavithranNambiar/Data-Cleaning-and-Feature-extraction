@@ -1,0 +1,331 @@
+---
+title: "GCS-Axcess"
+author: "Priyanka"
+date: "2/16/2020"
+output: html_document
+---
+
+Installing required Packages
+```{r}
+#install.packages('R.utils')
+library(R.utils)
+library(tidyverse)
+library(readr)
+library(readxl)
+library(lubridate)
+
+```
+
+Specifying the paths for files.
+
+```{r}
+#Importing Data
+##File path name on local system
+path <- 'C:/Users/priya/OneDrive/Documents/College/Courses/Spring Semester/Grad Case Studies/Updated Files18Feb20/MARKETING_ALL_LOANS_DATA/MARKETING_ALL_LOANS_DATA.csv'
+path2 <- 'C:/Users/priya/OneDrive/Documents/College/Courses/Spring Semester/Grad Case Studies/Updated Files18Feb20/Bank_Customer_Apps.xlsx'
+path3 <- 'C:/Users/priya/OneDrive/Documents/College/Courses/Spring Semester/Grad Case Studies/Updated Files18Feb20/mkt_email_call_view.csv'
+path4 <- 'C:/Users/priya/OneDrive/Documents/College/Courses/Spring Semester/Grad Case Studies/Updated Files18Feb20/CUSTOMER_DETAILS_UPDATED.xlsx'
+path5 <- 'C:/Users/priya/OneDrive/Documents/College/Courses/Spring Semester/Grad Case Studies/Updated Files18Feb20/ELIGIBILITY_LIST.xlsx'
+
+path6 <- 'C:/Users/priya/OneDrive/Documents/College/Courses/Spring Semester/Grad Case Studies/Updated Files18Feb20/data_elg_borr_complete.csv'
+
+##Reading data into R
+data_loans <- read_csv(path)
+data_app <- read_excel(path2)
+data_comm <- read_csv(path3)
+data_borr <- read_excel(path4)
+data_borr_rsc <- read_excel(path3, sheet = 2)
+data_elg_borr <- read_excel(path5, col_types = c("guess", "guess", "guess", "guess", "numeric"))
+data_elg_borr_complete <- read_csv(path6)
+```
+Data cleaning
+
+```{r}
+#Cleaning Column names
+names(data_loans) <- gsub("'","",as.vector(names(data_loans)))
+names(data_comm) <- gsub("'","",names(data_comm))
+names(data_borr) <- gsub("'","",names(data_borr))
+names(data_borr_rsc) <- gsub("'","",names(data_borr_rsc))
+names(data_call) <- gsub("'","",names(data_call))
+names(data_elg_borr) <- gsub("'","",names(data_elg_borr))
+```
+```{r}
+#Modules - Functions
+##Function to clean the data by placing missing values and removing quotes
+cleaner <- function(y){
+  y <- lapply(y, function(x)gsub('\\N', NA, x, fixed = TRUE))
+  y <- lapply(y, function(x)gsub("'", "", x, fixed = TRUE))  
+  y <- as.data.frame(y)
+  y
+}
+##Function to count missing values
+miss <- function(x){
+  y <- vector()
+  for (i in 1:ncol(x)){
+    y[i] <- sum(is.na(x[,i]))
+  }
+  z <- data.frame(Col_name=names(x), miss_num=y, perc=round(100*y/nrow(x), digits=2))
+  z
+}
+##Function to count distinct values
+dstnct <- function(x){
+  y <- vector()
+  for (i in 1:ncol(x)){
+    y[i] <- n_distinct(x[,i])
+  }
+  z <- data.frame(Col_name=names(x),dist_num=y, perc=round(100*y/nrow(x), digits=2))
+  z
+}
+```
+
+Working on LOAN DATA
+
+```{r}
+##Working with the Loans data
+data_loans_c <- cleaner(data_loans)
+
+##Conversion to dates 
+data_loans_c$LOAN_DATE <- as.Date(data_loans_c$LOAN_DATE)
+data_loans_c$LOAN_END_DATE <- as.Date(data_loans_c$LOAN_END_DATE)
+data_loans_c$DUE_DATE <- as.Date(data_loans_c$DUE_DATE)
+data_loans_c$SOLD_DATE <- as.Date(data_loans_c$SOLD_DATE)
+data_loans_c$WO_DATE <- as.Date(data_loans_c$WO_DATE)
+#Assigning numeric data types
+data_loans_c$LOAN_AMT <- as.numeric(data_loans_c$LOAN_AMT)
+data_loans_c$MAX_APPROVED_AMT <- as.numeric(data_loans_c$MAX_APPROVED_AMT)
+data_loans_c$APR <- as.numeric(data_loans_c$APR)
+data_loans_c$WO_AMT <- as.numeric(data_loans_c$WO_AMT)
+data_loans_c$NO_OF_INSTALLMENTS <- as.numeric(data_loans_c$NO_OF_INSTALLMENTS)
+data_loans_c$TOTAL_DUE <- as.numeric(data_loans_c$TOTAL_DUE)
+data_loans_c$LATE_FEE <- as.numeric(data_loans_c$LATE_FEE)
+data_loans_c$CSO_FEE <- as.numeric(data_loans_c$CSO_FEE)
+data_loans_c$NSF_FEE <- as.numeric(data_loans_c$NSF_FEE)
+data_loans_c$FEE_AMT <- as.numeric(data_loans_c$FEE_AMT)
+
+#Assigning to a new dataframe
+data_loans_c <- as.data.frame(data_loans_c)
+
+##Summary of missing values in the data
+miss_loans <- miss(data_loans_c)
+
+##Summary of distinct values in the data
+dstnct_loans <- dstnct(data_loans_c)
+
+##Summary of data
+dim(data_loans_c)
+str(data_loans_c)
+head(data_loans_c)
+summary(data_loans_c)
+
+rm(data_loans)
+```
+Cleaning all the data files
+
+```{r}
+#Communication Data
+data_comm_c <- data_comm %>% select(CUSTOMER_ID,BNK_SOURCE,BNK_APP_NUMBER,BNK_APP_DATE,
+                                        BNK_APP_STATUS,BNK_LOAN_CODE,BNK_LOAN_DATE,
+                                    BNK_LOAN_AMT)
+data_comm_c <- cleaner(data_comm)
+data_comm_c <- as.data.frame(data_comm_c)
+rm(data_comm)
+
+data_comm_bnk <- data_comm_c %>% filter(!(is.na(BNK_LOAN_DATE)))
+
+#Borrower data
+data_borr_c <- cleaner(data_borr)
+data_borr_c <- as.data.frame(data_borr_c)
+rm(data_borr)
+
+#Borrower calls data (excel)
+names(data_call)
+data_call_c <- data_call %>% select(CUSTOMER_ID, BNK_APP_NUMBER,
+                                    BNK_APP_DATE, BNK_APP_STATUS, BNK_LOAN_CODE, BNK_LOAN_DATE,
+                                    BNK_LOAN_AMT, BNK_PRODUCT)
+data_call_c <- cleaner(data_call)
+data_call_c <- as.data.frame(data_call_c)
+rm(data_call)
+
+#Eligible borrowers data 
+data_elg_borr_c <- cleaner(data_elg_borr)
+data_elg_borr_c <- as.data.frame(data_elg_borr_c)
+rm(data_elg_borr)
+
+#Bank Cust Apps data 
+data_app_c <- cleaner(data_app)
+data_app_c <- as.data.frame(data_app_c)
+rm(data_app)
+
+```
+ Loan data
+
+```{r}
+#Derived variables at LOAN level
+
+#1. ACTIVE LOANS
+#data_loans_c$active_loans <- ifelse(data_loans_c$LOAN_STATUS_ID == "OPN",1,0)
+
+
+#2. Grouping loan statues - GRP_LOAN_STS
+data_loans_c <- data_loans_c %>% mutate(grp_loan_sts =
+                                          case_when(
+                                            LOAN_STATUS_ID %in% c("BK" ,"BKRWO" ,"BLOCK", "DECDWO","FWO",   "WO", "WOU","WRO" ) ~ "BK/WO",
+                                            LOAN_STATUS_ID %in% c("BGT","CLO", "CLR","PIF") ~ "Closed",
+                                            LOAN_STATUS_ID %in% c("DEF","DLQ", "RPO", "RTN") ~ "Default",
+                                            LOAN_STATUS_ID %in% c("EPP") ~ "EPP",
+                                            LOAN_STATUS_ID %in% c("OPN", "SLD") ~ "Open",
+                                            LOAN_STATUS_ID %in% c("RSC","V","VO") ~ "Void/Rescinded",
+                                            TRUE ~ as.character(LOAN_STATUS_ID)
+                                          ))
+
+#3. Bad Event
+data_loans_c$bad_evnt = ifelse(data_loans_c$grp_loan_sts %in% c('BK/WO','Default'),1,0)
+
+#4. Setting cut-off date for Vintage calculation
+cut_off_date <- as.Date('2020-02-18', origin = "1960-10-01")
+
+#5. Online loan vs Retail
+data_loans_c$bank_product <- ifelse( data_loans_c$CHANNEL=="BS - CCB" & data_loans_c$LOAN_STATUS_ID %in% c("CLO", "OPN"), 1, 0)
+data_loans_c$retail_product <- ifelse( data_loans_c$CHANNEL=="Retail" & data_loans_c$LOAN_STATUS_ID %in% c("CLO", "OPN"), 1, 0)
+
+# Loan level derived data
+data_loans_c <- data_loans_c %>% arrange(CUSTOMER_ID,LOAN_DATE) %>%
+                                 mutate(inc_ln_amt = (LOAN_AMT - lag(LOAN_AMT)/LOAN_AMT),
+                                        utlzn = LOAN_AMT/MAX_APPROVED_AMT,
+                                        ln_tnr = LOAN_END_DATE - LOAN_DATE,
+                                        inc_ln_tnr = (ln_tnr - lag(ln_tnr))/as.numeric(lag(ln_tnr)),
+                                        inc_apr = (APR - lag(APR))/as.numeric(lag(APR)),
+                                        gap = LOAN_DATE - lag(LOAN_END_DATE))
+
+#Summarizing at  Customer Id column 
+
+loans_cust_level <- data_loans_c %>% 
+                      group_by(CUSTOMER_ID) %>%
+                        summarize(tot_loans = n_distinct(LOAN_CODE), 
+                                  #sum_active_loans = sum(active_loans),
+                                  tot_bad_evnts = sum(bad_evnt, na.rm = TRUE), 
+                                  first_loan_dt = min(LOAN_DATE, na.rm = TRUE),
+                                  tot_stores = n_distinct(ST_CODE), 
+                                  tot_prdts = n_distinct(PRODUCT_CODE),
+                                  tot_bank_prd = sum(bank_product, na.rm = TRUE),
+                                  tot_retail= sum(retail_product, na.rm = TRUE),
+                                  trnd_ln_amt = mean(inc_ln_amt,na.rm=TRUE),
+                                  avg_ln_amt = mean(LOAN_AMT,na.rm=TRUE),
+                                  #median loan amount
+                                  median_loan_amt = median(LOAN_AMT, na.rm=TRUE),
+                                  avg_ln_prp_inc = mean(ln_prp_inc,na.rm=TRUE),
+                                  avg_utlzn = mean(utlzn,na.rm=TRUE), 
+                                  trnd_ln_tnr = mean(inc_ln_tnr,na.rm=TRUE),
+                                  avg_apr = mean(APR,na.rm=TRUE), 
+                                  #median_apr
+                                  median_APR= median(APR, na.rm=TRUE),
+                                  #median total due
+                                  median_total_due=median(TOTAL_DUE, na.rm=TRUE),
+                                  #median wo amount
+                                  median_wo_amt = median(WO_AMT, na.rm=TRUE),
+                                  trnd_apr = mean(inc_apr, na.rm=TRUE))
+
+loans_cust_level$vintage <- cut_off_date- loans_cust_level$first_loan_dt
+loans_cust_level$vintage <- as.numeric(loans_cust_level$vintage)
+loans_cust_level$loan_rate <- loans_cust_level$tot_loans/loans_cust_level$vintage
+
+#Average time gap calculation
+arranged_date <- data_loans_c %>% filter(LOAN_STATUS_ID == c("OPN", "CLO")) %>% arrange(CUSTOMER_ID,LOAN_DATE)
+
+mut <- arranged_date %>% group_by(CUSTOMER_ID) %>% mutate(Lag = LOAN_DATE- lag(LOAN_END_DATE))
+mut <- mut[,c("CUSTOMER_ID","Lag")] %>% na.omit()
+mut$Lag <- as.numeric(mut$Lag)
+
+avg_time_gap <- mut %>% group_by(CUSTOMER_ID) %>% summarise(avg_time_gap= round(mean(Lag),2))
+loans_cust_level <-left_join(loans_cust_level,avg_time_gap)
+
+#Eligible customers categories
+
+data_app_c$APP_START_DATE <- as.Date(data_app_c$APP_START_DATE)
+data_app_b <- data_app_c %>% filter(CHANNEL== "BS - CCB")
+
+#Considering the latest status of the customer
+data_app_a <- data_app_b %>% group_by(CUSTOMER_ID) %>% filter(APP_START_DATE==max(APP_START_DATE))
+cust_originated <- data_app_a %>% filter(APPSTATUS =="ORIGINATED")
+cust_originated_ID <- unique(cust_originated$CUSTOMER_ID)
+cust_denied<- data_app_a %>% filter(APPSTATUS =="DENIED")
+cust_denied_ID <- unique(cust_denied$CUSTOMER_ID)
+cust_approved<- data_app_a %>% filter(APPSTATUS =="APPROVED")
+cust_approved_ID <- unique(cust_approved$CUSTOMER_ID)
+cust_withdrawn<- data_app_a %>% filter(APPSTATUS =="WITHDRAWN")
+cust_withdrawn_ID <- unique(cust_withdrawn$CUSTOMER_ID)
+cust_other <- data_app_a %>% filter(APPSTATUS %in% c("PENDING","UNSUBMITTED","RESCINDED","UNDERWRITING","DATA_WITHDRAWN"))
+cust_other_ID <- unique(cust_other$CUSTOMER_ID)
+
+
+cust_bucket <- unique(data_app_a$CUSTOMER_ID)
+cust_bucket <- data.frame(cust_bucket)
+colnames(cust_bucket) <- c("CUSTOMER_ID")
+
+#Creating Segmentation Buckets
+cust_bucket$originated <- ifelse((cust_bucket$CUSTOMER_ID %in% cust_originated_ID), 1, 0)
+
+cust_bucket$denied <- ifelse((cust_bucket$CUSTOMER_ID %in% cust_denied_ID), 1, 0)                                                  
+cust_bucket$approved <- ifelse((cust_bucket$CUSTOMER_ID %in% cust_approved_ID), 1, 0) 
+
+cust_bucket$withdrawn <- ifelse((cust_bucket$CUSTOMER_ID %in% cust_withdrawn_ID), 1, 0) 
+
+cust_bucket$other <- ifelse(( cust_bucket$CUSTOMER_ID %in% cust_other_ID), 1, 0)
+
+cust_bucket <- cust_bucket %>% mutate(sum= denied + withdrawn + originated + other)
+cust_bucket <- cust_bucket %>% mutate(multiple= ifelse(sum >1,1,0))
+
+cust_bucket$denied <-  ifelse(cust_bucket$originated ==1,0,cust_bucket$denied)
+cust_bucket$withdrawn <-  ifelse(cust_bucket$originated ==1,0,cust_bucket$withdrawn)
+cust_bucket$other <-  ifelse(cust_bucket$originated ==1,0,cust_bucket$other)
+
+cust_bucket$withdrawn <-  ifelse(cust_bucket$denied ==1,0,cust_bucket$withdrawn)
+cust_bucket$other <-  ifelse(cust_bucket$denied ==1,0,cust_bucket$other)
+
+cust_bucket$other <-  ifelse(cust_bucket$withdrawn ==1,0,cust_bucket$other)
+
+write_excel_csv(cust_bucket, "customer_buckets.csv")
+
+loans_cust_level <- left_join(loans_cust_level,cust_bucket, by = "CUSTOMER_ID")
+
+#Eligible Borrowers
+
+elg_borr_cust_level <- data_elg_borr %>% group_by(CUSTOMER_ID) %>%
+  summarize(elg_dt = min(START_TS, na.rm = T), elg_vintage = as.numeric(cut_off_date - elg_dt),
+            scr = mean(CREDIT_SCORE, na.rm = T))
+
+elg_borr_cust_level1 <- data_elg_borr %>% group_by(CUSTOMER_ID) %>%
+  summarize(n_lst = n_distinct(LIST_ID),
+            n_bnk_loans = n_distinct(LOAN_CODE))
+
+elg_borr_cust_level <- left_join(elg_borr_cust_level, elg_borr_cust_level1)
+
+loans_cust_level <- left_join(elg_borr_cust_level, loans_cust_level)
+
+```
+```{r}
+#Product level data
+data_loans_c$inc_ln_tnr <- as.numeric(data_loans_c$inc_ln_tnr)
+loans_product_level <- data_loans_c %>% group_by(CUSTOMER_ID,PRODUCT) %>%
+  summarize( trnd_ln_amt = mean(inc_ln_amt,na.rm=TRUE),
+            avg_ln_amt = mean(LOAN_AMT,na.rm=TRUE), 
+            #avg_ln_prp_inc = mean(ln_prp_inc),
+            avg_utlzn = mean(utlzn,na.rm=TRUE), n_bad_evnts = sum(bad_evnt,na.rm=TRUE), 
+            trnd_ln_tnr = mean(inc_ln_tnr,na.rm=TRUE),
+            avg_apr = mean(APR,na.rm=TRUE), trnd_apr = mean(inc_apr, na.rm=TRUE),
+          )
+
+loans_product_level$trnd_ln_amt_fct <- ifelse(loans_product_level$trnd_ln_amt>0, 'inc', 'dec')
+loans_product_level$trnd_ln_tnr_fct <- ifelse(loans_product_level$trnd_ln_tnr>0, 'inc', 'dec')
+loans_product_level$trnd_apr_fct <- ifelse(loans_product_level$trnd_apr>0, 'inc', 'dec')
+
+
+write_excel_csv(loans_product_level, "loans_product_level.csv")
+
+
+```
+
+
+
+
+
